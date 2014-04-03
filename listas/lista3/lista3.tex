@@ -1,0 +1,343 @@
+\documentclass[11pt,a4paper]{report}
+
+\usepackage[brazil]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[latin1]{inputenc}
+\usepackage{amsmath,amsfonts}
+\usepackage{bussproofs}
+\usepackage{amssymb}
+\usepackage{tikz}
+
+\usepackage{latexsym}
+\usepackage{pgf}
+
+\newcounter{conta}
+ 
+\begin{document}
+ 
+\noindent Grupo de Estudos de Programa\c{c}\~ao Funcional
+ \hfill DECSI - UFOP \\
+Professor: \parbox[t]{14cm}{Rodrigo Geraldo Ribeiro \\
+                     e-mail: rodrigo@decsi.ufop.br}
+ 
+\vspace*{3mm}
+ O objetivo desta lista \'e implementar um conjunto de fun\c{c}\~oes Haskell que simula um interpretador de consultas
+ em um sistema gerenciador de banco de dados. 
+	           
+	           Tabelas de um banco de dados s\~ao representadas pelo tipo de dados \texttt{Table}:
+\begin{verbatim}
+data Table = Table {
+                tableName   :: String,   
+                tableFields :: [Field],
+                values :: [[String]]
+           } deriving (Eq, Ord)
+\end{verbatim}
+Um valor do tipo Table \'e formado por tr\^es componentes, onde o primeiro componente \'e o nome da tabela, 
+o segundo \'e a lista dos campos da tabela e o terceiro componente \'e a lista das linhas da tabela, sendo cada linha
+uma lista em que cada elemento em uma posi\c{c}\~ao $i$ da lista corresponde \`a informa\c{c}\~ao da coluna $i$ . 
+Todas as informa\c{c}\~oes contidas na tabela s\~ao do tipo String.
+
+Cada campo de uma tabela \'e representado por um valor do tipo \texttt{Field}, que \'e formado pelo nome do campo e pelo
+tipo de dados associado com este campo. Tipos de dados s\~ao representados pelo tipo \texttt{Type} e especificam os
+ tipos de dados mais comuns presentes em bancos de dados relacionais. Os tipos \texttt{Field} e \texttt{Type} s\~ao
+ apresentados abaixo:
+
+\begin{verbatim}
+data Field = Field  {
+                fieldName :: String, 
+                fieldType :: Type    
+           }           
+           deriving (Eq, Ord)
+
+data Type = TyInt
+          | TyDouble                         
+          | TyBool                           
+          | TyVarChar (Maybe Int)             
+          | TyDate                           
+          | TyCurrency                       
+          deriving (Eq, Ord)
+\end{verbatim}
+
+Para exemplificar a representa\c{c}\~ao a ser utilizada neste trabalho, considere o trecho de c\'odigo a seguir, onde \'e
+mostrada uma tabela de exemplo:
+
+\begin{verbatim}
+client :: Table
+client = Table "Cliente" fieldsCliente dataCliente
+
+fieldsCliente :: [Field]
+fieldsCliente = [Field "id" TyInt, 
+                 Field "nome" (TyVarChar (Just 15)), 
+                 Field "cpf" (TyVarChar (Just 11))]
+
+dataCliente :: [[String]]
+dataCliente = [["1", "Jose da Silva", "23333245678"], 
+               ["2", "Joaquim Souza", "09863737213"], 
+               ["3", "Roberto Martins", "45627819081"]]
+\end{verbatim}
+
+Observe que os valores \texttt{fieldsCliente} e \texttt{dataCliente} s\~ao utilizados apenas para criar a lista de campos
+e dos valores associados com a tabela criada.
+\begin{flushleft}
+\textbf{Exerc\'icio 1}: Um esquema de uma tabela de um banco de dados relacional \'e um produto dos tipos de cada uma 
+                        das tabelas de um banco de dados. 
+                       Considere o seguinte tipo de dados que representa um esquema de uma tabela de um banco de dados
+                       relacional:
+\end{flushleft}
+	\begin{verbatim}
+data Schema = Type :*: Schema 
+            | Nil 
+            deriving (Eq, Ord)
+	\end{verbatim}
+
+Onde o construtor de dados \texttt{:*:} representa o produto do tipo de um campo de uma tabela e o esquema que
+representa o restante da tabela. Como exemplo, o esquema que representa a tabela cliente mostrada anteriormente \'e:
+
+\begin{verbatim}
+esquemaCliente :: Schema
+esquemaCliente = TyInt                   :*: 
+                 (TyVarChar (Just 15))   :*:
+                 ((TyVarChar (Just 11))) :*: Nil
+\end{verbatim} 	
+
+O construtor de dados \texttt{Nil} \'e utilizado apenas como um marcador de fim do produto do esquema de uma tabela.
+
+Neste primeiro exerc\'icio voc\^e dever\'a desenvolver:
+
+\textbf{Exerc\'icio 1-a)}: O tipo (esquema) de uma tabela \'e representado pelo produto cartesiano de cada uma das 
+colunas que comp\~oe a tabela. Valores do tipo \texttt{Type} podem ser impressos (convertidos em Strings) de acordo com
+ a seguinte tabela de equival\^encia:
+ 
+ 
+\begin{tabular}{|l|l|}
+ 	\hline
+ 	   Valor do tipo \texttt{Type} & String correspondente\\ \hline
+ 	   \texttt{TyInt}              & \texttt{Int}\\
+ 	   \texttt{TyDouble}           & \texttt{Double}\\
+ 	   \texttt{TyBool}             & \texttt{Bool}\\
+ 	   \texttt{TyVarChar (Just n)} & \texttt{VarChar[n]}\\
+ 	   \texttt{TyVarChar Nothing}  & \texttt{VarChar}\\
+ 	   \texttt{TyDate}             & \texttt{Date}\\
+ 	   \texttt{TyCurrency}         & \texttt{Currency}\\
+ 	\hline
+\end{tabular}
+\begin{verbatim}
+
+\end{verbatim} 
+
+Para a impress\~ao de esquemas, basta considerar que o construtor de dados \texttt{:*:} \'e o equivalente ao produto
+cartesiano \texttt{X} entre tipos de cada coluna de uma tabela. Como exemplo, o esquema da tabela cliente, apresentado 
+anteriormente, pode ser impresso como: \texttt{Int X VarChar[15] X VarChar[11]}. Observe que o construtor de dados 
+\texttt{Nil} \'e substitu\'ido pela string vazia. Tendo como base as informa\c{c}\~oes apresentadas, fa\c{c}a o que se
+pede:
+
+\textbf{Exerc\'icio 1-a-i)} Desenvolva uma inst\^ancia de \texttt{Show} para o tipo \texttt{Type} que reflita a 
+convers\~ao de valores deste tipo em strings de acordo com a tabela apresentada anteriormente.
+
+\textbf{Exerc\'icio 1-a-ii)} Desenvolva uma inst\^ancia para \texttt{Show} para o tipo \texttt{Schema} que permita
+imprimir esquemas de tabelas de maneira similar ao exemplo apresentado anteriormente para a tabela cliente.
+
+
+\textbf{Exerc\'icio 1-b)}: Uma fun\c{c}\~ao \texttt{schema :: Table -> Schema} que dada uma tabela, representada pelo 
+tipo de dados \textbf{Table}, retorne o esquema correspondente a esta. 
+
+\textbf{Exerc\'icio 2}: Defina uma inst\^ancia de \texttt{Show} para o tipo \texttt{Table}, de maneira que a tabela 
+cliente apresentada anteriormente seja impressa da seguinte maneira:
+\begin{verbatim}
+Cliente:
+--------------------------------
+id nome            cpf         
+--------------------------------
+1  Jose da Silva   23333245678 
+2  Joaquim Souza   09863737213 
+3  Roberto Martins 45627819081 
+\end{verbatim}
+
+\textbf{Exerc\'icio 3}: Defina uma fun\c{c}\~ao \texttt{count :: Table -> Int} que retorne o n\'umero de registros
+presentes em uma tabela. Se aplicarmos a fun\c{c}\~ao \texttt{count} \`a tabela de clientes, o resultado dever\'a ser
+\texttt{3}.
+
+\textbf{Exerc\'icio 4}: Defina uma fun\c{c}\~ao:
+\begin{center}
+ \texttt{project :: Table -> [String] -> Either String Table}
+\end{center}
+
+que receba como argumento uma tabela e uma lista de nomes de campos desta tabela e retorne como resultado uma nova 
+tabela que contenha somente as informa\c{c}\~oes presentes nas colunas especificadas pelo segundo argumento. Como 
+exemplo, se executarmos \texttt{project client ["id","nome"]} o resultado ser\'a:
+\begin{verbatim}
+Right Cliente-id-nome:
+-------------------
+id nome            
+-------------------
+1  Jose da Silva   
+2  Joaquim Souza   
+3  Roberto Martins
+\end{verbatim}
+
+Observe que o nome da tabela resultante \'e formado pela concatena\c{c}\~ao do nome da tabela com o nome dos campos 
+que foram fornecidos como argumento para a fun\c{c}\~ao \texttt{project}. O resultado desta fun\c{c}\~ao \'e expresso
+pelo tipo \texttt{Either String Table}. O construtor de tipos \texttt{Either} \'e normalmente utilizado para representar
+fun\c{c}\~oes que podem resultar em erros. No caso da fun\c{c}\~ao \texttt{project}, ela deve retornar uma mensagem de
+erro, sempre que seja passado como par\^ametro um nome de campo que n\~ao esteja presente na tabela na qual deseja-se
+realizar a proje\c{c}\~ao. Isto \'e, se executarmos \texttt{project client ["id", "teste"]} dever\'a ser retornado o
+seguinte resultado:
+\begin{verbatim}
+Left "The fields:\nteste\nisnt defined in table: Cliente"
+\end{verbatim}
+onde \texttt{Left} \'e o construtor de dados do tipo \texttt{Either} que \'e utilizado para representar erros.
+
+\textbf{Exerc\'icio 5}: Defina a fun\c{c}\~ao:
+\begin{center}
+\texttt{restrict :: Table -> Condition -> Either String Table}
+\end{center}
+Que seleciona todos os registros de uma tabela que atendem a uma determinada condi\c{c}\~ao. Condi\c{c}\~oes s\~ao 
+representadas pelo tipo \texttt{Condition}, apresentado abaixo:
+\begin{verbatim}
+data Condition = Condition {
+                   field :: String,
+                   condition :: String -> Bool
+               }
+\end{verbatim}
+onde \texttt{field} representa o nome do campo que ser\'a utilizado no processo de sele\c{c}\~ao de registros e 
+\texttt{condition} \'e uma fun\c{c}\~ao que verifica se um valor deste campo atende ou n\~ao a condi\c{c}\~ao
+ especificada. Como exemplo, considere o seguinte valor do tipo \texttt{Condition}, que representa a condi\c{c}\~ao:
+ \textit{Selecione todos os nomes que come\c{c}am com a letra 'R'}:
+\begin{verbatim}
+cond :: Condition
+cond = Condition "nome" (\s -> head s == 'R')
+\end{verbatim}
+
+Ao executarmos \texttt{restrict client cond} deve ser impresso o seguinte valor:
+
+\begin{verbatim}
+Right Cliente:
+--------------------------------
+id nome            cpf         
+--------------------------------
+3  Roberto Martins 45627819081 
+\end{verbatim}
+
+\textbf{Exerc\'icio 6}: A fun\c{c}\~ao a seguir possibilita combinar duas tabelas. Duas tabelas apenas podem ser
+combinadas se elas possuem um campo em comum, isto \'e, uma coluna com o mesmo nome e tipo.
+
+A tabela resultante da combina\c{c}\~ao de duas tabelas deve possuir todas as colunas da primeira tabela, seguidas
+pelas colunas da segunda tabela que n\~ao ocorrem na primeira tabela. Portanto, o n\'umero de colunas na tabela
+resultante \'e menor do que a soma do numero de colunas de cada uma das tabelas combinadas.
+Cada registro na nova tabela \'e formado pela combina\c{c}\~ao dos registros correspondentes das duas tabelas 
+combinadas, ou seja, por registros que t\^em o mesmo valor na coluna comum \`as duas tabelas. O nome da nova tabela
+\'e formado pela concatena\c{c}\~ao dos nomes das duas tabelas que s\~ao combinadas.
+Para isso, defina a fun\c{c}\~ao:
+\begin{center}
+\texttt{join :: Table -> Table -> Either String Table}
+\end{center}
+que realize a jun\c{c}\~ao de duas tabelas como explicado acima.
+
+Para exemplificar, considere a seguinte tabela que representa endere\c{c}os de clientes:
+
+\begin{verbatim}
+Endereco:
+----------------------------------------------------
+cpf         rua    bairro cidade          estado 
+----------------------------------------------------
+23333245678 rua 2  alfa   jurema do sul   SC     
+09863737213 rua 89 beta   jurema do norte SC     
+45627819081 rua 10 gama   jurema do leste SC     
+\end{verbatim}
+Observe que ela possui um campo em comum com a tabela cliente (o campo \texttt{cpf}). O resultado de exercutarmos 
+\texttt{join client address}, onde \texttt{address} \'e o valor que representa a tabela de endere\c{c}os acima, deve ser:
+
+\begin{verbatim}
+Right Cliente-Endereco:
+-------------------------------------------------------------------------
+id nome            cpf         rua    bairro cidade          estado 
+-------------------------------------------------------------------------
+1  Jose da Silva   23333245678 rua 2  alfa   jurema do sul   SC     
+2  Joaquim Souza   09863737213 rua 89 beta   jurema do norte SC     
+3  Roberto Martins 45627819081 rua 10 gama   jurema do leste SC  
+\end{verbatim}
+\'E importante ressaltar que a ordem das par\^ametros fornecidos para a opera\c{c}\~ao de jun\c{c}\~ao altera o 
+resultado. O resultado de executarmos \texttt{join address client} \'e:
+
+\begin{verbatim}
+Right Endereco-Cliente:
+-------------------------------------------------------------------------
+cpf         rua    bairro cidade          estado id nome            
+-------------------------------------------------------------------------
+23333245678 rua 2  alfa   jurema do sul   SC     1  Jose da Silva   
+09863737213 rua 89 beta   jurema do norte SC     2  Joaquim Souza   
+45627819081 rua 10 gama   jurema do leste SC     3  Roberto Martins 
+\end{verbatim}
+A opera\c{c}\~ao de jun\c{c}\~ao pode ser decomposta em dois passos:
+\begin{enumerate}
+	\item Calcular o produto cartesiano das duas tabelas. Para isso, \'e criada uma nova tabela que possuir\'a como
+	      campos todos os campos de ambas as tabelas envolvidas no produto. Os registros s\~ao obtidos realizando
+	      todas as combina\c{c}\~oes de ambas as tabelas. Isto \'e feito pegando cada registro da primeira tabela e 
+	      concatenando-o com cada registro correspondente na segunda tabela.
+	\item Selecionar todos os registros onde o campo em comum de duas tabelas possui o mesmo valor.
+\end{enumerate}
+Para implementar a fun\c{c}\~ao \texttt{join}, basta:
+\begin{enumerate}
+	\item Implementar uma fun\c{c}\~ao \texttt{cartProd :: Table -> Table -> Either String Table}, que calcula o produto
+	      cartesiano de duas tabelas conforme descrito acima. Esta fun\c{c}\~ao deve retornar uma mensagem de erro,
+	      caso as duas tabelas fornecidas como par\^ametro n\~ao possu\'irem um campo em comum.
+	\item Implementar uma fun\c{c}\~ao \texttt{restrictProd :: Table -> Either String Table}, que seleciona os registros
+	      adequados do produto cartesiano, conforme descrito acima.
+	\item Implementar uma inst\^ancia de \texttt{Monad (Either a)} para permitir que opera\c{c}\~oes sobre o tipo de 
+	      dados \texttt{Either a b} possam ser compostas.
+\end{enumerate}
+\textbf{Exerc\'icio 7}: Verifica\c{c}\~ao de tipos para tabelas
+
+Um problema comum a todas as bibliotecas para manipula\c{c}\~ao de bancos de dados em quaisquer linguagens de 
+programa\c{c}\~ao \'e que estas n\~ao garantem que valores inseridos / modificados em um banco de dados possuam
+tipos adequados. Se alguma verifica\c{c}\~ao ocorre, esta \'e feita pelo banco de dados durante a execu\c{c}\~ao do
+programa em quest\~ao. At\'e o presente ponto a modelagem de tabelas utilizada nos exerc\'icios anteriores n\~ao garante
+ que os registros presentes na tabela possuam tipo que esteja de acordo com o esquema especificado por uma tabela. O 
+ objetivo deste exerc\'icio \'e o desenvolvimento de uma fun\c{c}\~ao que verifique se todos os registros associados a
+ uma tabela de um banco de dados est\~ao de acordo com o esquema da tabela em quest\~ao. Para isso considere o seguinte
+ tipo que representa uma tabela cujos registros s\~ao bem tipados:
+ \begin{verbatim}
+data TypedTable = TypedTable {
+                    tyTableName   :: String,
+                    tyTableSchema :: Schema,
+                    typedValues   :: [[Value]]   
+                } deriving (Eq, Ord)
+ \end{verbatim}
+ 
+Observe que em uma tabela bem tipada, valores n\~ao s\~ao representados por strings mas sim por valores do tipo 
+\texttt{Value}, que \'e apresentado abaixo:
+
+\begin{verbatim}
+data Value = IntVal Int
+           | DoubleVal Double
+           | BoolVal Bool
+           | VarCharVal String
+           | DateVal Date
+           | CurrencyVal Currency 
+           deriving (Eq, Ord)
+\end{verbatim}
+
+O tipo \texttt{Value} possui um construtor de dados para cada um dos poss\'iveis tipos que cada campo de uma tabela 
+pode possuir. Para isso defina as seguintes fun\c{c}\~oes:
+\begin{enumerate}
+	\item \texttt{parseValue :: String -> Value} : que recebe uma String e retorna como resultado o valor correspondente.
+	\item \texttt{parseRecord :: [String] -> [Value]}: que recebe uma lista de Strings correspondentes \`as linhas da
+	      tabela e retorna uma lista de valores bem tipados correspondentes.
+	\item \texttt{tcRecord :: [Value] -> Schema -> Either String [Value]}: que recebe uma lista de valores e um esquema
+	      de uma tabela e retorna como resultado uma mensagem de erro, no caso de algum registro n\~ao estar de acordo
+	      com o esquema da tabela ou os pr\'oprios valores no caso destes serem bem tipados.
+	\item \texttt{tcTable :: Table -> Either String TypedTable}: que recebe uma tabela n\~ao tipada e retorna como 
+	      resultado uma mensagem de erro ou uma tabela bem tipada.
+\end{enumerate}
+\textbf{Observa\c{c}\~oes}: Procure usar um bom estilo de programa\c{c}\~ao ao definir suas fun\c{c}\~oes e use
+ coment\'arios claros para indicar a funcionalidade de cada defini\c{c}\~ao. \'E recomend\'avel o uso de todo o 
+ conte\'udo visto ao longo do curso (fun\c{c}\~oes de ordem superior, list comprehensions). Al\'em disso, \'e 
+ recomend\'avel que voc\^e divida seu programa em pequenas fun\c{c}\~oes para que voc\^e possa test\'a-las 
+ separadamente. 
+ 
+O m\'odulo que cont\'em o programa deve ter um coment\'ario inicial contendo os nomes dos componentes do grupo. 
+O trabalho deve ser entregue at\'e a data especificada no site, devendo ser enviado por e-mail, para o
+endere\c{c}o rodrigogribeiro at gmail.com, com o subject LP-Trabalho2 (isso ser\'a avaliado!).
+
+
+\end{document}
