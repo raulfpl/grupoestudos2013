@@ -134,18 +134,19 @@ data Condition = Condition {
 
 
 restrict :: Table -> Condition -> Either String Table
-restrict t c = if ((field c) `elem` fieldNames) then Right (Table (tableName t) fields newValues) else Left "The field isn't defined in the table"
-    where newValues    = filter lineMatch vs
-          vs           = values t
-          fields       = tableFields t
-          fieldNames   = map fieldName fields
-          matchedField = head $ filter (\f -> f == field c) fieldNames
-          lineMatch l  = (condition c) $ l !! fi
-          Just fi      = elemIndex (field c) fieldNames
+restrict t c =
+    case colN of
+        Nothing -> Left "The field isn't defined in the table"
+        Just n  -> let matchCondition xs = condition c $ xs !! n
+                       newValues         = filter matchCondition (values t)
+            in if length newValues /= 0 then Right $ Table (tableName t) fields newValues
+               else Left "None of the table rows matched the condition"
+    where fieldNames        = map fieldName fields
+          fields            = tableFields t
+          colN              = elemIndex (field c) fieldNames
 
 cond :: Condition
 cond = Condition "nome" (\s -> head s == 'R')
-
 
 -------------------------------------------------------------------------------
 -- Exercício 6: Junção
