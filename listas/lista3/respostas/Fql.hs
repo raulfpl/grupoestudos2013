@@ -155,6 +155,24 @@ cond = Condition "nome" (\s -> head s == 'R')
 join :: Table -> Table -> Either String Table
 join t1 t2 = undefined
 
+joinRecords :: [[[Char]]] -> [[[Char]]] -> [Int] -> [Int] -> [String]
+joinRecords rs1 rs2 inds1 inds2 =
+    [a ++ b | a <- rs1, b <- rs2, match a b]
+    where match xs ys = and $ map (\(n1, n2) -> xs !! n1 == ys !! n2) (zip inds1 inds2)
+
+cartProd :: Table -> Table -> Either String Table
+cartProd t1 t2 =
+    if commonFields == []
+        then Left "No common fields"
+        else Right $ Table newName allFields []
+    where newName      = tableName t1 ++ "-" ++ (tableName t2)
+          commonFields = intersect (tableFields t1) (tableFields t2)
+          allFields    = union (tableFields t1) (tableFields t2)
+
+--instance Monad (Either a) where
+--    return = Right
+--    Right x >>= f = f x
+--    Left x >>= f = Left x
 
 -------------------------------------------------------------------------------
 -- Exercício 7: Verificação de esquema
