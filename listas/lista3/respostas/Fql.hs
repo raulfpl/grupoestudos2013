@@ -1,5 +1,6 @@
 module Fql where
 import Data.List
+import Data.Maybe
 
 -- Definindo uma tabela
 
@@ -70,7 +71,7 @@ instance Show Type where
     show TyDouble             = "Double"
     show TyBool               = "Bool"
     show (TyVarChar Nothing)  = "VarChar"
-    show (TyVarChar (Just n)) = "VarChar[" ++ (show n) ++ "]"
+    show (TyVarChar (Just n)) = "VarChar[" ++ show n ++ "]"
     show TyDate               = "Date"
     show TyCurrency           = "Currency"
 
@@ -81,7 +82,7 @@ instance Show Schema where
 schema :: Table -> Schema
 schema (Table _ fields _) = schemaFromFields fields
     where schemaFromFields []                = Nil
-          schemaFromFields ((Field _ ft):fs) = ft :*: schemaFromFields fs
+          schemaFromFields (Field _ ft:fs) = ft :*: schemaFromFields fs
 
 
 -------------------------------------------------------------------------------------------------------------
@@ -91,14 +92,14 @@ schema (Table _ fields _) = schemaFromFields fields
 
 instance Show Table where
     show t = tableName t ++ ":\n" ++ separator ++ header ++ "\n" ++ separator ++ tableLines
-        where separator      = (replicate (sum colLengths -1) '-') ++ "\n"
+        where separator      = replicate (sum colLengths -1) '-' ++ "\n"
               colLengths     = [max (maximum (map length c)) (length f) + 1 | (c, f) <- zip cols names]
               cols           = transpose . values $ t
               names          = map fieldName (tableFields t)
               tableLines     = unlines newLines
               header         = concat $ zipWith putSpaces names colLengths
               newLines       = map ajustLine $ values t
-              putSpaces v l  = v ++ replicate (l - (length v)) ' '
+              putSpaces v l  = v ++ replicate (l - length v) ' '
               ajustLine line = concat $ zipWith putSpaces line colLengths
 
 
@@ -115,7 +116,7 @@ count (Table _ _ ls) = length ls
 -------------------------------------------------------------------------------
 
 project :: Table -> [String] -> Either String Table
-project t q = if (length newFields == length q) then Right (Table newName newFields newValues) else Left projectError
+project t q = if length newFields == length q then Right (Table newName newFields newValues) else Left projectError
     where (newFields, newCols) = unzip $ filter ((`elem` q) . fieldName . fst) (zip (tableFields t) cols)
           cols                 = transpose . values $ t
           newValues            = transpose newCols
@@ -139,7 +140,7 @@ restrict t c =
         Nothing -> Left "The field isn't defined in the table"
         Just n  -> let matchCondition xs = condition c $ xs !! n
                        newValues         = filter matchCondition (values t)
-            in if length newValues /= 0 then Right $ Table (tableName t) fields newValues
+            in if not (null newValues) then Right $ Table (tableName t) fields newValues
                else Left "None of the table rows matched the condition"
     where fieldNames        = map fieldName fields
           fields            = tableFields t
@@ -153,21 +154,38 @@ cond = Condition "nome" (\s -> head s == 'R')
 -------------------------------------------------------------------------------
 
 join :: Table -> Table -> Either String Table
-join t1 t2 = undefined
+join t1 t2 =
+    if null commonFields then
+        Left "Could not join"
+    else Right $ Table newName newFields newRecords
+    where newName      = tableName t1 ++ "-" ++ tableName t2
+          newFields    = tableFields t1 `union` tableFields t2
+          newRecords   = joinRecords (values t1) (values t2) inds1 inds2
+          inds1        = mapMaybe (`elemIndex` tableFields t1) commonFields
+          inds2        = mapMaybe (`elemIndex` tableFields t2) commonFields
+          commonFields = tableFields t1 `intersect` tableFields t2
 
-joinRecords :: [[[Char]]] -> [[[Char]]] -> [Int] -> [Int] -> [String]
+joinRecords :: [[String]] -> [[String]] -> [Int] -> [Int] -> [[String]]
 joinRecords rs1 rs2 inds1 inds2 =
-    [a ++ b | a <- rs1, b <- rs2, match a b]
-    where match xs ys = and $ map (\(n1, n2) -> xs !! n1 == ys !! n2) (zip inds1 inds2)
+    map (`removeIndices` map (length rs1 +) inds2)[a ++ b | a <- rs1, b <- rs2, match a b]
+    where match xs ys = all (\(n1, n2) -> xs !! n1 == ys !! n2) (zip inds1 inds2)
+
+
+removeIndices :: [a] -> [Int] -> [a]
+removeIndices l [] = l
+removeIndices l ui =
+        let (i:is) = sortBy (flip compare) ui
+            (p1, _:p2) = splitAt i l in
+        removeIndices p1 is ++ p2
 
 cartProd :: Table -> Table -> Either String Table
 cartProd t1 t2 =
-    if commonFields == []
+    if null commonFields
         then Left "No common fields"
         else Right $ Table newName allFields []
-    where newName      = tableName t1 ++ "-" ++ (tableName t2)
-          commonFields = intersect (tableFields t1) (tableFields t2)
-          allFields    = union (tableFields t1) (tableFields t2)
+    where newName      = tableName t1 ++ "-" ++ tableName t2
+          commonFields = tableFields t1 `intersect` tableFields t2
+          allFields    = tableFields t1 `union` tableFields t2
 
 --instance Monad (Either a) where
 --    return = Right
